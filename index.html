@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta name="theme-color" content="#0a0a0a">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+    <link rel="apple-touch-icon" href="icons/icon.svg">
+
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="5-в-1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Измеритель 5-в-1</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #00ff00;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .measurements {
+            background: #111;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #1a3a1a;
+            cursor: default;
+            transition: background 0.2s;
+        }
+
+        .row.clickable {
+            cursor: pointer;
+        }
+
+        .row.clickable:hover {
+            background: rgba(0, 255, 0, 0.05);
+        }
+
+        .row.clickable:active {
+            background: rgba(0, 255, 0, 0.1);
+        }
+
+        .row:last-child {
+            border-bottom: none;
+        }
+
+        .label-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .label {
+            font-size: 14px;
+            color: #00aa00;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .setting {
+            font-size: 10px;
+            color: #006600;
+            margin-top: 2px;
+            letter-spacing: 0.5px;
+        }
+
+        .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            text-align: right;
+        }
+
+        .value.small {
+            font-size: 22px;
+        }
+
+        .unit {
+            font-size: 14px;
+            color: #006600;
+            margin-left: 5px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 25px;
+            font-size: 28px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #00ff00;
+            color: #000;
+            margin-bottom: 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn.running {
+            background: #ff4444;
+            color: white;
+            animation: pulse 1s infinite;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+        }
+
+        .btn.reset-mode {
+            background: #ffaa00;
+            color: #000;
+            animation: none;
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.3);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .instructions {
+            text-align: center;
+            color: #004400;
+            font-size: 12px;
+            margin-top: 15px;
+            line-height: 1.5;
+        }
+
+        .instructions span {
+            color: #00aa00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ 5-в-1</h1>
+
+        <div class="measurements">
+            <!-- Тахиметр -->
+            <div class="row clickable" id="tachyRow" onclick="cycleTachymeter()">
+                <div class="label-container">
+                    <span class="label">🏎️ Тахиметр</span>
+                    <span class="setting" id="tachySetting">дист: 1000 м</span>
+                </div>
+                <span class="value" id="tachymeter">--<span class="unit">км/ч</span></span>
+            </div>
+
+            <!-- Пульсометр -->
+            <div class="row clickable" id="pulseRow" onclick="cyclePulsometer()">
+                <div class="label-container">
+                    <span class="label">💓 Пульсометр</span>
+                    <span class="setting" id="pulseSetting">по 5 ударам</span>
+                </div>
+                <span class="value" id="pulsometer">--<span class="unit">уд/мин</span></span>
+            </div>
+
+            <!-- Секундомер -->
+            <div class="row">
+                <span class="label">⏱️ Секундомер</span>
+                <span class="value" id="stopwatch">00:00.0<span class="unit">с</span></span>
+            </div>
+
+            <!-- Телеметрия -->
+            <div class="row">
+                <span class="label">📡 Телеметрия</span>
+                <span class="value" id="telemetry">--<span class="unit">м</span></span>
+            </div>
+
+            <!-- производит. -->
+            <div class="row">
+                <span class="label">🏭 производит.</span>
+                <span class="value" id="perhour">--<span class="unit">шт/ч</span></span>
+            </div>
+        </div>
+
+        <button class="btn" id="mainBtn" onclick="toggleTimer()">▶️ СТАРТ</button>
+
+        <div class="instructions">
+            <span>СТАРТ</span> — запуск | <span>СТОП</span> — пауза | <span>СБРОС</span> — обнуление<br>
+            <span>ПРОБЕЛ</span> — управление кнопкой<br>
+            <span>Нажми на строку</span> — сменить настройку
+        </div>
+    </div>
+
+    <script>
+        let startTime = null;
+        let elapsedTime = 0;
+        let timerInterval = null;
+        let isRunning = false;
+
+        // Настройки тахиметра: дистанция в метрах
+        const tachyDistances = [100, 200, 500, 1000];
+        let tachyIndex = 3; // по умолчанию 1000 м
+
+        // Настройки пульсометра: количество ударов
+        const pulseCounts = [5, 10];
+        let pulseIndex = 0; // по умолчанию 5 ударов
+
+        function formatTime(ms) {
+            const totalSeconds = ms / 1000;
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            // Если прошло больше 60 минут — показываем часы
+            if (hours > 0) {
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${seconds.toFixed(1).padStart(4, '0')}`;
+            } else {
+                return `${String(minutes).padStart(2, '0')}:${seconds.toFixed(1).padStart(4, '0')}`;
+            }
+        }
+
+        function getStopwatchUnit(ms) {
+            const hours = Math.floor(ms / 3600000);
+            return hours > 0 ? 'ч' : 'с';
+        }
+
+        function calculateTachymeter(ms) {
+            if (ms <= 0) return '--';
+            const seconds = ms / 1000;
+            const distance = tachyDistances[tachyIndex]; // метры
+            // скорость = distance * 3.6 / seconds
+            const speed = Math.round(distance * 3.6 / seconds);
+            return speed.toString();
+        }
+
+        function calculatePulsometer(ms) {
+            if (ms <= 0) return '--';
+            const seconds = ms / 1000;
+            const beats = pulseCounts[pulseIndex];
+            // BPM = (beats / seconds) * 60
+            const bpm = Math.round((beats / seconds) * 60);
+            return bpm.toString();
+        }
+
+        function calculateTelemetry(ms) {
+            if (ms <= 0) return '--';
+            const seconds = ms / 1000;
+            const distanceMeters = seconds * 343; // скорость звука 343 м/с
+
+            // Если расстояние больше 999 метров — показываем в километрах
+            if (distanceMeters >= 1000) {
+                return (distanceMeters / 1000).toFixed(2);
+            } else {
+                return Math.round(distanceMeters).toString();
+            }
+        }
+
+        function getTelemetryUnit(ms) {
+            if (ms <= 0) return 'м';
+            const distanceMeters = (ms / 1000) * 343;
+            return distanceMeters >= 1000 ? 'км' : 'м';
+        }
+
+        function calculatePerHour(ms) {
+            if (ms <= 0) return '--';
+            const seconds = ms / 1000;
+            // производит.: 1 штука за X секунд = 3600/X штук в час
+            const itemsPerHour = Math.round(3600 / seconds);
+            return itemsPerHour.toString();
+        }
+
+        function cycleTachymeter() {
+            tachyIndex = (tachyIndex + 1) % tachyDistances.length;
+            document.getElementById('tachySetting').textContent =
+                `дист: ${tachyDistances[tachyIndex]} м`;
+            updateDisplay();
+        }
+
+        function cyclePulsometer() {
+            pulseIndex = (pulseIndex + 1) % pulseCounts.length;
+            document.getElementById('pulseSetting').textContent =
+                `по ${pulseCounts[pulseIndex]} ударам`;
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const now = Date.now();
+            let currentElapsed;
+
+            if (isRunning && startTime) {
+                currentElapsed = elapsedTime + (now - startTime);
+            } else {
+                currentElapsed = elapsedTime;
+            }
+
+            // Секундомер с динамической единицей измерения
+            const stopwatchEl = document.getElementById('stopwatch');
+            const stopwatchUnit = getStopwatchUnit(currentElapsed);
+            if (currentElapsed >= 3600000) {
+                stopwatchEl.classList.add('small');
+            } else {
+                stopwatchEl.classList.remove('small');
+            }
+            stopwatchEl.innerHTML =
+                formatTime(currentElapsed) + '<span class="unit">' + stopwatchUnit + '</span>';
+
+            // Все производные измерения
+            if (currentElapsed > 0) {
+                document.getElementById('tachymeter').innerHTML =
+                    calculateTachymeter(currentElapsed) + '<span class="unit">км/ч</span>';
+                document.getElementById('pulsometer').innerHTML =
+                    calculatePulsometer(currentElapsed) + '<span class="unit">уд/мин</span>';
+
+                // Телеметрия с динамической единицей
+                const telemetryUnit = getTelemetryUnit(currentElapsed);
+                document.getElementById('telemetry').innerHTML =
+                    calculateTelemetry(currentElapsed) + '<span class="unit">' + telemetryUnit + '</span>';
+
+                document.getElementById('perhour').innerHTML =
+                    calculatePerHour(currentElapsed) + '<span class="unit">шт/ч</span>';
+            }
+        }
+
+        function toggleTimer() {
+            const btn = document.getElementById('mainBtn');
+
+            if (!isRunning && elapsedTime === 0) {
+                // СТАРТ
+                startTimer();
+            } else if (isRunning) {
+                // СТОП
+                stopTimer();
+            } else {
+                // СБРОС
+                resetTimer();
+            }
+        }
+
+        function startTimer() {
+            isRunning = true;
+            startTime = Date.now();
+
+            const btn = document.getElementById('mainBtn');
+            btn.textContent = '⏸️ СТОП';
+            btn.classList.add('running');
+            btn.classList.remove('reset-mode');
+
+            timerInterval = setInterval(updateDisplay, 50);
+            updateDisplay();
+        }
+
+        function stopTimer() {
+            if (!isRunning) return;
+
+            isRunning = false;
+            elapsedTime += Date.now() - startTime;
+            startTime = null;
+
+            clearInterval(timerInterval);
+
+            const btn = document.getElementById('mainBtn');
+            btn.textContent = '🔄 СБРОС';
+            btn.classList.remove('running');
+            btn.classList.add('reset-mode');
+
+            updateDisplay();
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            elapsedTime = 0;
+            startTime = null;
+
+            const btn = document.getElementById('mainBtn');
+            btn.textContent = '▶️ СТАРТ';
+            btn.classList.remove('running', 'reset-mode');
+
+            document.getElementById('stopwatch').innerHTML = '00:00.0<span class="unit">с</span>';
+            document.getElementById('tachymeter').innerHTML = '--<span class="unit">км/ч</span>';
+            document.getElementById('pulsometer').innerHTML = '--<span class="unit">уд/мин</span>';
+            document.getElementById('telemetry').innerHTML = '--<span class="unit">м</span>';
+            document.getElementById('perhour').innerHTML = '--<span class="unit">шт/ч</span>';
+        }
+
+        // ПРОБЕЛ для управления
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                toggleTimer();
+            }
+        });
+
+        // Инициализация
+        updateDisplay();
+    </script>
+    <script>
+    if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js')
+        .then(function (reg) {
+            console.log('[PWA] Service Worker зарегистрирован:', reg.scope);
+        })
+        .catch(function (err) {
+            console.warn('[PWA] Ошибка Service Worker:', err);
+        });
+    });
+    }
+    </script>
+</body>
+</html>
