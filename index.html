@@ -1,18 +1,23 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Измеритель 5-в-1</title>
+
+    <!-- ============ PWA ============ -->
     <meta name="theme-color" content="#0a0a0a">
+    <meta name="description" content="Многофункциональный секундомер: тахиметр, пульсометр, телеметрия и производительность">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
-    <link rel="apple-touch-icon" href="icons/icon.svg">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
 
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="5-в-1">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Измеритель 5-в-1</title>
+    <!-- ============================= -->
+
     <style>
         * {
             margin: 0;
@@ -28,9 +33,12 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            min-height: 100dvh;
             user-select: none;
             -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right)
+                     env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
         .container {
@@ -135,6 +143,7 @@
             color: #000;
             margin-bottom: 10px;
             box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            font-family: inherit;
         }
 
         .btn:active {
@@ -171,9 +180,63 @@
         .instructions span {
             color: #00aa00;
         }
+
+        /* ============ Кнопка "Не выключать экран" ============ */
+        .wake-btn {
+            position: fixed;
+            top: calc(15px + env(safe-area-inset-top));
+            right: calc(15px + env(safe-area-inset-right));
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: #111;
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.25s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+            font-family: inherit;
+            padding: 0;
+        }
+
+        .wake-btn.active {
+            background: #00ff00;
+            color: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+            border-color: #00ff00;
+        }
+
+        .wake-btn:active {
+            transform: scale(0.92);
+        }
+
+        .wake-btn:focus-visible {
+            outline: 2px solid #00ffaa;
+            outline-offset: 3px;
+        }
+
+        @media (max-width: 420px) {
+            .wake-btn {
+                top: calc(10px + env(safe-area-inset-top));
+                right: calc(10px + env(safe-area-inset-right));
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Кнопка "чашка кофе" — не выключать экран -->
+    <button class="wake-btn" id="wakeBtn" onclick="toggleWakeLock()"
+            title="Не выключать экран" aria-label="Не выключать экран">☕</button>
+
     <div class="container">
         <h1>⚡ 5-в-1</h1>
 
@@ -220,7 +283,8 @@
         <div class="instructions">
             <span>СТАРТ</span> — запуск | <span>СТОП</span> — пауза | <span>СБРОС</span> — обнуление<br>
             <span>ПРОБЕЛ</span> — управление кнопкой<br>
-            <span>Нажми на строку</span> — сменить настройку
+            <span>Нажми на строку</span> — сменить настройку<br>
+            <span>☕</span> — не выключать экран
         </div>
     </div>
 
@@ -244,7 +308,6 @@
             const minutes = Math.floor((totalSeconds % 3600) / 60);
             const seconds = totalSeconds % 60;
 
-            // Если прошло больше 60 минут — показываем часы
             if (hours > 0) {
                 return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${seconds.toFixed(1).padStart(4, '0')}`;
             } else {
@@ -260,8 +323,7 @@
         function calculateTachymeter(ms) {
             if (ms <= 0) return '--';
             const seconds = ms / 1000;
-            const distance = tachyDistances[tachyIndex]; // метры
-            // скорость = distance * 3.6 / seconds
+            const distance = tachyDistances[tachyIndex];
             const speed = Math.round(distance * 3.6 / seconds);
             return speed.toString();
         }
@@ -270,7 +332,6 @@
             if (ms <= 0) return '--';
             const seconds = ms / 1000;
             const beats = pulseCounts[pulseIndex];
-            // BPM = (beats / seconds) * 60
             const bpm = Math.round((beats / seconds) * 60);
             return bpm.toString();
         }
@@ -278,9 +339,7 @@
         function calculateTelemetry(ms) {
             if (ms <= 0) return '--';
             const seconds = ms / 1000;
-            const distanceMeters = seconds * 343; // скорость звука 343 м/с
-
-            // Если расстояние больше 999 метров — показываем в километрах
+            const distanceMeters = seconds * 343;
             if (distanceMeters >= 1000) {
                 return (distanceMeters / 1000).toFixed(2);
             } else {
@@ -297,7 +356,6 @@
         function calculatePerHour(ms) {
             if (ms <= 0) return '--';
             const seconds = ms / 1000;
-            // производит.: 1 штука за X секунд = 3600/X штук в час
             const itemsPerHour = Math.round(3600 / seconds);
             return itemsPerHour.toString();
         }
@@ -326,7 +384,6 @@
                 currentElapsed = elapsedTime;
             }
 
-            // Секундомер с динамической единицей измерения
             const stopwatchEl = document.getElementById('stopwatch');
             const stopwatchUnit = getStopwatchUnit(currentElapsed);
             if (currentElapsed >= 3600000) {
@@ -337,14 +394,12 @@
             stopwatchEl.innerHTML =
                 formatTime(currentElapsed) + '<span class="unit">' + stopwatchUnit + '</span>';
 
-            // Все производные измерения
             if (currentElapsed > 0) {
                 document.getElementById('tachymeter').innerHTML =
                     calculateTachymeter(currentElapsed) + '<span class="unit">км/ч</span>';
                 document.getElementById('pulsometer').innerHTML =
                     calculatePulsometer(currentElapsed) + '<span class="unit">уд/мин</span>';
 
-                // Телеметрия с динамической единицей
                 const telemetryUnit = getTelemetryUnit(currentElapsed);
                 document.getElementById('telemetry').innerHTML =
                     calculateTelemetry(currentElapsed) + '<span class="unit">' + telemetryUnit + '</span>';
@@ -355,16 +410,11 @@
         }
 
         function toggleTimer() {
-            const btn = document.getElementById('mainBtn');
-
             if (!isRunning && elapsedTime === 0) {
-                // СТАРТ
                 startTimer();
             } else if (isRunning) {
-                // СТОП
                 stopTimer();
             } else {
-                // СБРОС
                 resetTimer();
             }
         }
@@ -427,18 +477,111 @@
         // Инициализация
         updateDisplay();
     </script>
+
+    <!-- ============ Screen Wake Lock (не выключать экран) ============ -->
     <script>
-    if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js')
-        .then(function (reg) {
-            console.log('[PWA] Service Worker зарегистрирован:', reg.scope);
-        })
-        .catch(function (err) {
-            console.warn('[PWA] Ошибка Service Worker:', err);
+        let wakeLock = null;
+        let wakeLockDesired = false; // пользователь хочет держать экран включённым
+
+        async function requestWakeLock() {
+            if (!('wakeLock' in navigator)) {
+                console.warn('Screen Wake Lock API не поддерживается этим браузером');
+                return false;
+            }
+
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+
+                wakeLock.addEventListener('release', () => {
+                    // Браузер/система сняли блокировку (например, вкладка скрыта
+                    // или включён энергосберегающий режим).
+                    wakeLock = null;
+                    updateWakeButton(false);
+                    // Если пользователь всё ещё хочет — попробуем восстановить
+                    // при возврате на страницу (см. visibilitychange).
+                });
+
+                updateWakeButton(true);
+                return true;
+            } catch (err) {
+                console.warn('Не удалось включить режим "не выключать экран":', err);
+                updateWakeButton(false);
+                return false;
+            }
+        }
+
+        async function releaseWakeLock() {
+            wakeLockDesired = false;
+
+            if (wakeLock) {
+                try {
+                    await wakeLock.release();
+                } catch (e) {
+                    // игнорируем — блокировка могла быть уже снята
+                }
+                wakeLock = null;
+            }
+
+            updateWakeButton(false);
+        }
+
+        function toggleWakeLock() {
+            if (wakeLockDesired) {
+                releaseWakeLock();
+            } else {
+                wakeLockDesired = true;
+                requestWakeLock();
+            }
+        }
+
+        function updateWakeButton(isActive) {
+            const btn = document.getElementById('wakeBtn');
+            if (!btn) return;
+
+            if (isActive) {
+                btn.classList.add('active');
+                btn.title = 'Экран не выключается (нажмите, чтобы отключить)';
+                btn.setAttribute('aria-label', 'Экран не выключается. Нажмите, чтобы отключить');
+            } else {
+                btn.classList.remove('active');
+                btn.title = 'Не выключать экран';
+                btn.setAttribute('aria-label', 'Не выключать экран');
+            }
+        }
+
+        // При скрытии страницы система снимает блокировку.
+        // Когда пользователь возвращается — запрашиваем снова, если он этого хотел.
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible' && wakeLockDesired && !wakeLock) {
+                await requestWakeLock();
+            }
         });
-    });
-    }
+
+        // Если API не поддерживается — прячем кнопку, чтобы не сбивать с толку
+        if (!('wakeLock' in navigator)) {
+            document.addEventListener('DOMContentLoaded', () => {
+                const btn = document.getElementById('wakeBtn');
+                if (btn) btn.style.display = 'none';
+            });
+        }
+    </script>
+
+    <!-- ============ Регистрация Service Worker ============ -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('sw.js')
+                    .then(function (reg) {
+                        console.log('[PWA] Service Worker зарегистрирован:', reg.scope);
+                    })
+                    .catch(function (err) {
+                        console.warn('[PWA] Ошибка Service Worker:', err);
+                    });
+            });
+        }
+
+        // Защита от случайного двойного тап-зума в standalone-режиме
+        document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
     </script>
 </body>
 </html>
